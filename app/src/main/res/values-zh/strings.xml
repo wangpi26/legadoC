@@ -2656,4 +2656,12 @@
     <string name="role_library_merge_to">合并到…</string>
     <string name="role_library_unknown_book">未知书籍</string>
     <string name="role_library_no_merge_targets">没有可合并的角色</string>
+    <string name="role_library_export">导出角色</string>
+    <string name="role_library_import">导入角色</string>
+    <string name="role_library_export_success">已导出 %1$d 本书 / %2$d 个角色</string>
+    <string name="role_library_export_failed">导出失败: %1$s</string>
+    <string name="role_library_import_done">导入完成</string>
+    <string name="role_library_import_summary">新增 %1$d / 跳过 %2$d / 绑定 %3$d</string>
+    <string name="role_library_import_failed">导入失败: %1$s</string>
+    <string name="role_library_import_empty">归档中没有角色</string>
 </resources>

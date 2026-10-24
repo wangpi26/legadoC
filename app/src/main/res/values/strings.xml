@@ -2816,4 +2816,12 @@
     <string name="role_library_merge_to">Merge into…</string>
     <string name="role_library_unknown_book">Unknown book</string>
     <string name="role_library_no_merge_targets">No roles to merge into</string>
+    <string name="role_library_export">Export roles</string>
+    <string name="role_library_import">Import roles</string>
+    <string name="role_library_export_success">Exported %1$d books / %2$d roles</string>
+    <string name="role_library_export_failed">Export failed: %1$s</string>
+    <string name="role_library_import_done">Import complete</string>
+    <string name="role_library_import_summary">Added %1$d / skipped %2$d / bindings %3$d</string>
+    <string name="role_library_import_failed">Import failed: %1$s</string>
+    <string name="role_library_import_empty">No roles in this archive</string>
 </resources>

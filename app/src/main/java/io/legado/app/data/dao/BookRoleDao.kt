@@ -22,6 +22,9 @@ interface BookRoleDao {
     @Query("select * from book_roles where enabled = 1 order by workKey, roleId")
     fun getAllBookRolesGlobal(): List<BookRole>
 
+    @Query("select * from book_roles order by workKey, roleId")
+    fun getAllBookRolesIncludingDisabledGlobal(): List<BookRole>
+
     @Query("select * from book_roles where roleId = :roleId")
     fun getRole(roleId: Long): BookRole?
 

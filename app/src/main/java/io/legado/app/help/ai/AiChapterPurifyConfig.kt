@@ -129,6 +129,20 @@ object AiChapterPurifyConfig {
             ?: AiStructuredRequestTemplate.structuredDefault
         set(value) = appCtx.putPrefString(PreferKey.aiChapterPurifyRequestTemplate, value.trim())
 
+    /**
+     * 解析章节净化请求模板：复用当前模型时继承全局模板，独立模型时优先独立模板。
+     * 保留为纯函数，供旧配置解析与 JVM 回归测试使用。
+     */
+    fun resolveRequestTemplate(
+        reuseCurrentModel: Boolean,
+        globalTemplate: String?,
+        independentTemplate: String?,
+    ): String {
+        val global = globalTemplate.orEmpty()
+        if (reuseCurrentModel) return global
+        return independentTemplate?.takeIf { it.isNotBlank() } ?: global
+    }
+
     var preprocessJson: String
         get() = GSON.toJson(preprocessRules)
         set(value) {

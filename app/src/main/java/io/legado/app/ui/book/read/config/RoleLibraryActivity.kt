@@ -1,8 +1,12 @@
 package io.legado.app.ui.book.read.config
 
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Menu
+import android.view.MenuItem
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,6 +18,9 @@ import io.legado.app.data.entities.BookRole
 import io.legado.app.data.entities.BookTtsCastRole
 import io.legado.app.data.entities.BookTtsVoiceBinding
 import io.legado.app.databinding.ActivityRoleLibraryBinding
+import io.legado.app.help.roles.RoleArchiveCodec
+import io.legado.app.help.roles.RoleArchiveExporter
+import io.legado.app.help.roles.RoleArchiveImporter
 import io.legado.app.help.tts.BookTtsAutomationConfig
 import io.legado.app.help.tts.BookTtsCastingCoordinator
 import io.legado.app.help.tts.TtsEngineStore
@@ -22,6 +29,9 @@ import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,6 +48,12 @@ class RoleLibraryActivity :
     override val binding by viewBinding(ActivityRoleLibraryBinding::inflate)
 
     private val adapter = RoleLibraryAdapter(::showRoleActions)
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument(RoleArchiveCodec.MIME_TYPE)
+    ) { uri -> uri?.let(::exportArchive) }
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(::importArchive) }
     private var tabPosition = 0
     private var query = ""
     private var allRows: List<RoleLibraryRow> = emptyList()
@@ -67,6 +83,31 @@ class RoleLibraryActivity :
             }
         })
         loadRows()
+    }
+
+    override fun onCompatCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.role_library, menu)
+        return super.onCompatCreateOptionsMenu(menu)
+    }
+
+    override fun onCompatOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_role_export -> {
+                val fileName = "readernext-roles-${
+                    SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
+                }.json"
+                exportLauncher.launch(fileName)
+                return true
+            }
+
+            R.id.menu_role_import -> {
+                importLauncher.launch(
+                    arrayOf(RoleArchiveCodec.MIME_TYPE, "text/plain", "application/octet-stream")
+                )
+                return true
+            }
+        }
+        return super.onCompatOptionsItemSelected(item)
     }
 
     override fun onResume() {
@@ -516,6 +557,76 @@ class RoleLibraryActivity :
                     }
             }
             loadRows()
+        }
+    }
+
+    private fun exportArchive(uri: Uri) {
+        lifecycleScope.launch {
+            runCatching {
+                val archive = RoleArchiveExporter.build()
+                val json = RoleArchiveCodec.encode(archive)
+                withContext(Dispatchers.IO) {
+                    contentResolver.openOutputStream(uri)?.use {
+                        it.write(json.toByteArray(Charsets.UTF_8))
+                    } ?: error("无法写入所选文件")
+                }
+                archive
+            }.onSuccess { archive ->
+                val roleCount = archive.books.sumOf {
+                    it.formalRoles.size + it.castRoles.size
+                }
+                toastOnUi(
+                    getString(
+                        R.string.role_library_export_success,
+                        archive.books.size,
+                        roleCount,
+                    )
+                )
+            }.onFailure {
+                toastOnUi(
+                    getString(
+                        R.string.role_library_export_failed,
+                        it.message ?: it.javaClass.simpleName,
+                    )
+                )
+            }
+        }
+    }
+
+    private fun importArchive(uri: Uri) {
+        lifecycleScope.launch {
+            runCatching {
+                val raw = withContext(Dispatchers.IO) {
+                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        ?: error("无法读取所选文件")
+                }
+                val archive = RoleArchiveCodec.decode(raw).getOrThrow()
+                val roleCount = archive.books.sumOf {
+                    it.formalRoles.size + it.castRoles.size
+                }
+                if (roleCount == 0) error(getString(R.string.role_library_import_empty))
+                RoleArchiveImporter.import(archive)
+            }.onSuccess { result ->
+                loadRows()
+                alert(title = getString(R.string.role_library_import_done)) {
+                    setMessage(
+                        getString(
+                            R.string.role_library_import_summary,
+                            result.newRoles,
+                            result.skipped,
+                            result.bindings,
+                        )
+                    )
+                    positiveButton(R.string.ok)
+                }
+            }.onFailure {
+                toastOnUi(
+                    getString(
+                        R.string.role_library_import_failed,
+                        it.message ?: it.javaClass.simpleName,
+                    )
+                )
+            }
         }
     }
 
