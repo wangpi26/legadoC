@@ -38,6 +38,10 @@ data class RoleArchiveCastRole(
     val occurrenceCount: Int = 0,
     val ignored: Boolean = false,
     val linkedRoleId: Long = 0L,
+    val samplesJson: String = "[]",
+    val evidence: String = "",
+    val firstChapterIndex: Int = -1,
+    val lastChapterIndex: Int = -1,
 )
 
 data class RoleArchiveBinding(

@@ -40,18 +40,7 @@ object RoleArchiveExporter {
                     },
                 castRoles = cast.filter { it.workKey == workKey }
                     .sortedBy { it.castRoleId }
-                    .map {
-                        RoleArchiveCastRole(
-                            id = it.castRoleId,
-                            name = it.name,
-                            aliases = RoleArchiveCodec.aliasesFromJson(it.aliasesJson),
-                            gender = it.gender,
-                            identityState = it.identityState,
-                            occurrenceCount = it.occurrenceCount,
-                            ignored = it.ignored,
-                            linkedRoleId = it.linkedRoleId,
-                        )
-                    },
+                    .map(RoleArchiveCastMapper::toArchive),
                 bindings = bindings.filter { it.workKey == workKey }
                     .sortedWith(compareBy({ it.targetType }, { it.targetId }))
                     .map {

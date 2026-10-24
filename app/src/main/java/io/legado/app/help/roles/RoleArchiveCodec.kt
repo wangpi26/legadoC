@@ -15,7 +15,7 @@ import com.google.gson.JsonParser
  */
 object RoleArchiveCodec {
 
-    const val CURRENT_VERSION = 1
+    const val CURRENT_VERSION = 2
     const val MIME_TYPE = "application/json"
 
     private val gson = GsonBuilder()
@@ -23,14 +23,15 @@ object RoleArchiveCodec {
         .setPrettyPrinting()
         .create()
 
-    fun encode(archive: RoleArchive): String = gson.toJson(archive)
+    fun encode(archive: RoleArchive): String =
+        gson.toJson(archive.copy(version = CURRENT_VERSION))
 
     fun decode(raw: String): Result<RoleArchive> = runCatching {
         if (raw.isBlank()) fail("角色归档为空")
         val root = parseObject(raw, "角色归档根节点")
         val version = root.intOrNull("version")
             ?: fail("角色归档缺少 version")
-        if (version != CURRENT_VERSION) {
+        if (version != 1 && version != 2) {
             fail("不支持的角色归档版本: $version")
         }
         val exportedAt = root.longOrNull("exportedAt") ?: 0L
@@ -44,7 +45,7 @@ object RoleArchiveCodec {
             }
             archiveBooks += book
         }
-        RoleArchive(version, exportedAt, archiveBooks)
+        RoleArchive(CURRENT_VERSION, exportedAt, archiveBooks)
     }
 
     fun aliasesToJson(aliases: List<String>): String =
@@ -108,6 +109,10 @@ object RoleArchiveCodec {
         val occurrenceCount = obj.intOrNull("occurrenceCount") ?: 0
         val ignored = obj.booleanOrNull("ignored") ?: false
         val linkedRoleId = obj.longOrNull("linkedRoleId") ?: 0L
+        val samplesJson = obj.stringOrNull("samplesJson") ?: "[]"
+        val evidence = obj.stringOrNull("evidence") ?: ""
+        val firstChapterIndex = obj.intOrNull("firstChapterIndex") ?: -1
+        val lastChapterIndex = obj.intOrNull("lastChapterIndex") ?: -1
         return RoleArchiveCastRole(
             id = id,
             name = name,
@@ -117,6 +122,10 @@ object RoleArchiveCodec {
             occurrenceCount = occurrenceCount,
             ignored = ignored,
             linkedRoleId = linkedRoleId,
+            samplesJson = samplesJson,
+            evidence = evidence,
+            firstChapterIndex = firstChapterIndex,
+            lastChapterIndex = lastChapterIndex,
         )
     }
 

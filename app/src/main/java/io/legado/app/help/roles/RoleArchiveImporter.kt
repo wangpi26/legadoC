@@ -153,21 +153,16 @@ object RoleArchiveImporter {
             plan.cast.forEach { planned ->
                 val role = planned.role
                 val newId = dao.insertCastRole(
-                    BookTtsCastRole(
+                    RoleArchiveCastMapper.toEntity(
                         workKey = planned.book.workKey,
-                        name = role.name,
-                        aliasesJson = RoleArchiveCodec.aliasesToJson(role.aliases),
-                        gender = role.gender.takeIf { it in VALID_GENDERS } ?: BookRole.Gender.UNKNOWN,
-                        identityState = role.identityState.takeIf { it in VALID_STATES }
-                            ?: BookTtsCastRole.IdentityState.STABLE,
-                        occurrenceCount = role.occurrenceCount,
-                        firstChapterIndex = -1,
-                        lastChapterIndex = -1,
-                        samplesJson = "[]",
-                        evidence = "",
-                        ignored = role.ignored,
+                        role = role.copy(
+                            gender = role.gender.takeIf { it in VALID_GENDERS }
+                                ?: BookRole.Gender.UNKNOWN,
+                            identityState = role.identityState.takeIf { it in VALID_STATES }
+                                ?: BookTtsCastRole.IdentityState.STABLE,
+                        ),
                         linkedRoleId = formalIds[role.linkedRoleId] ?: 0L,
-                        updatedAt = now,
+                        now = now,
                     )
                 )
                 castIds[role.id] = newId
@@ -210,6 +205,10 @@ object RoleArchiveImporter {
                                     identityState = incoming.identityState.takeIf { it in VALID_STATES }
                                         ?: BookTtsCastRole.IdentityState.STABLE,
                                     occurrenceCount = incoming.occurrenceCount,
+                                    firstChapterIndex = incoming.firstChapterIndex,
+                                    lastChapterIndex = incoming.lastChapterIndex,
+                                    samplesJson = incoming.samplesJson,
+                                    evidence = incoming.evidence,
                                     ignored = incoming.ignored,
                                     linkedRoleId = formalIds[incoming.linkedRoleId]
                                         ?: current.linkedRoleId,
