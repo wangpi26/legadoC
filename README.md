@@ -1,3 +1,5 @@
+> 本项目是 [CCSSNE/legadoC](https://github.com/CCSSNE/legadoC) 的公开 fork，基于其 `own` 分支提交 `4301f639` 起步；上游血缘与许可证说明见 [FORK.md](FORK.md)。
+
 **交流群 有bug 或者建议可以加入 1004372141 主要优化听书体验**
 
 好用的话，点个 star，谢谢啦
