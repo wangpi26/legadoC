@@ -2815,4 +2815,5 @@
     <string name="role_library_empty">No roles yet</string>
     <string name="role_library_merge_to">Merge into…</string>
     <string name="role_library_unknown_book">Unknown book</string>
+    <string name="role_library_no_merge_targets">No roles to merge into</string>
 </resources>

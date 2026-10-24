@@ -248,7 +248,7 @@ class RoleLibraryActivity :
                             it.roleId,
                             it.workKey,
                             titleOf(it.workKey),
-                            "正式: ${it.name}",
+                            "${getString(R.string.ai_roles_formal)}: ${it.name}",
                             emptyList(),
                             it.gender,
                             "",
@@ -267,7 +267,7 @@ class RoleLibraryActivity :
                                 it.castRoleId,
                                 it.workKey,
                                 titleOf(it.workKey),
-                                "临时: ${it.name}",
+                                "${getString(R.string.ai_roles_temporary)}: ${it.name}",
                                 emptyList(),
                                 it.gender,
                                 "",
@@ -279,7 +279,7 @@ class RoleLibraryActivity :
                 formalTargets + castTargets
             }
             if (targets.isEmpty()) {
-                toastOnUi("没有可合并的角色")
+                toastOnUi(R.string.role_library_no_merge_targets)
                 return@launch
             }
             alert(title = getString(R.string.role_library_merge_to)) {

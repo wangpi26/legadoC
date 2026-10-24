@@ -2655,4 +2655,5 @@
     <string name="role_library_empty">暂无角色</string>
     <string name="role_library_merge_to">合并到…</string>
     <string name="role_library_unknown_book">未知书籍</string>
+    <string name="role_library_no_merge_targets">没有可合并的角色</string>
 </resources>
