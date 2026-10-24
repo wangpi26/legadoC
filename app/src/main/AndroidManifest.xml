@@ -310,6 +310,11 @@
             android:name=".ui.highlight.HighlightRuleActivity"
             android:launchMode="singleTop"
             android:screenOrientation="behind" />
+        <!-- 跨书角色库 -->
+        <activity
+            android:name=".ui.book.read.config.RoleLibraryActivity"
+            android:launchMode="singleTop"
+            android:screenOrientation="behind" />
         <!-- 书籍管理 -->
         <activity
             android:name=".ui.book.manage.BookshelfManageActivity"

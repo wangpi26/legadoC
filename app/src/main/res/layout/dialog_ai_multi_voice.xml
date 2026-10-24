@@ -315,6 +315,16 @@
                 android:text="@string/ai_add_role"
                 android:textColor="?attr/colorAccent"
                 android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/tv_role_library"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:text="@string/role_library"
+                android:textColor="?attr/colorAccent"
+                android:textSize="15sp" />
         </LinearLayout>
     </FrameLayout>
 

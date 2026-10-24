@@ -19,6 +19,9 @@ interface BookRoleDao {
     @Query("select * from book_roles where workKey = :workKey order by roleId")
     fun getAllRoles(workKey: String): List<BookRole>
 
+    @Query("select * from book_roles where enabled = 1 order by workKey, roleId")
+    fun getAllBookRolesGlobal(): List<BookRole>
+
     @Query("select * from book_roles where roleId = :roleId")
     fun getRole(roleId: Long): BookRole?
 
@@ -37,6 +40,9 @@ interface BookRoleDao {
     @Query("select * from book_tts_cast_roles where workKey = :workKey order by castRoleId")
     fun getCastRoles(workKey: String): List<BookTtsCastRole>
 
+    @Query("select * from book_tts_cast_roles order by workKey, castRoleId")
+    fun getAllCastRolesGlobal(): List<BookTtsCastRole>
+
     @Query("select * from book_tts_cast_roles where castRoleId = :castRoleId")
     fun getCastRole(castRoleId: Long): BookTtsCastRole?
 
@@ -54,6 +60,9 @@ interface BookRoleDao {
 
     @Query("select * from book_tts_voice_bindings where workKey = :workKey")
     fun getBindings(workKey: String): List<BookTtsVoiceBinding>
+
+    @Query("select * from book_tts_voice_bindings")
+    fun getAllBindingsGlobal(): List<BookTtsVoiceBinding>
 
     @Query(
         "select * from book_tts_voice_bindings where workKey = :workKey " +

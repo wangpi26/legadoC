@@ -346,6 +346,9 @@ class AiMultiVoiceDialog : BaseDialogFragment(R.layout.dialog_ai_multi_voice) {
         binding.recyclerRoles.addItemDecoration(VerticalDivider(requireContext()))
         binding.recyclerRoles.adapter = roleAdapter
         binding.tvAddRole.setOnClickListener { AiRoleEditDialog.show(childFragmentManager, 0L) }
+        binding.tvRoleLibrary.setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), RoleLibraryActivity::class.java))
+        }
         loadRoles()
     }
 

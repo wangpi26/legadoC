@@ -2650,4 +2650,9 @@
     <string name="homepage_manual_add_module">手动添加模块</string>
     <string name="homepage_kind_select_title">选择分类</string>
     <string name="homepage_kind_select_confirm">确定</string>
+    <string name="role_library">角色库</string>
+    <string name="role_library_search_hint">搜索角色、别名或书名</string>
+    <string name="role_library_empty">暂无角色</string>
+    <string name="role_library_merge_to">合并到…</string>
+    <string name="role_library_unknown_book">未知书籍</string>
 </resources>

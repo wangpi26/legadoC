@@ -2810,4 +2810,9 @@
     <string name="agent_tools">工具设置</string>
     <string name="agent_loading">正在加载 Agent 配置…</string>
     <string name="agent_internal_switch_summary">内部 Agent 总开关；关闭后停止当前任务，对外 MCP 服务不受影响</string>
+    <string name="role_library">Role Library</string>
+    <string name="role_library_search_hint">Search role, alias or book</string>
+    <string name="role_library_empty">No roles yet</string>
+    <string name="role_library_merge_to">Merge into…</string>
+    <string name="role_library_unknown_book">Unknown book</string>
 </resources>
