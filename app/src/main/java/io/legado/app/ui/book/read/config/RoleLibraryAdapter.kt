@@ -22,6 +22,8 @@ data class RoleLibraryRow(
 
 class RoleLibraryAdapter(
     private val onClick: (RoleLibraryRow) -> Unit,
+    private val onLongClick: (RoleLibraryRow) -> Unit = {},
+    private val isSelected: (RoleLibraryRow) -> Boolean = { false },
 ) : ListAdapter<RoleLibraryRow, RoleLibraryAdapter.ViewHolder>(Diff) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -37,11 +39,20 @@ class RoleLibraryAdapter(
         private val binding: ItemRoleLibraryBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(row: RoleLibraryRow) {
-            binding.tvName.text = row.name
+            val selected = isSelected(row)
+            binding.tvName.text = if (selected) "✓ ${row.name}" else row.name
             binding.tvDetail.text = row.detail
             binding.tvBook.text = "《${row.bookTitle}》"
             binding.root.setOnClickListener { onClick(row) }
+            binding.root.setOnLongClickListener {
+                onLongClick(row)
+                true
+            }
         }
+    }
+
+    fun refreshSelection() {
+        if (itemCount > 0) notifyItemRangeChanged(0, itemCount)
     }
 
     private object Diff : DiffUtil.ItemCallback<RoleLibraryRow>() {

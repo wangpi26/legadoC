@@ -6,6 +6,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
+import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -19,9 +20,13 @@ import io.legado.app.data.entities.BookTtsCastRole
 import io.legado.app.data.entities.BookTtsVoiceBinding
 import io.legado.app.databinding.ActivityRoleLibraryBinding
 import io.legado.app.databinding.DialogRoleVoiceSyncBinding
+import io.legado.app.help.config.AppConfig
 import io.legado.app.help.roles.RoleArchiveCodec
 import io.legado.app.help.roles.RoleArchiveExporter
 import io.legado.app.help.roles.RoleArchiveImporter
+import io.legado.app.help.roles.RoleBatchApplier
+import io.legado.app.help.roles.RoleBatchPlanner
+import io.legado.app.help.roles.RoleBindingBatchApplier
 import io.legado.app.help.roles.RoleVoiceSyncApplier
 import io.legado.app.help.roles.RoleVoiceSyncPlanner
 import io.legado.app.help.tts.BookTtsAutomationConfig
@@ -50,7 +55,14 @@ class RoleLibraryActivity :
 
     override val binding by viewBinding(ActivityRoleLibraryBinding::inflate)
 
-    private val adapter = RoleLibraryAdapter(::showRoleActions)
+    private val selectedRows = linkedMapOf<String, RoleLibraryRow>()
+    private var selectionMode = false
+    private var visibleRows: List<RoleLibraryRow> = emptyList()
+    private val adapter = RoleLibraryAdapter(
+        onClick = ::onRowClick,
+        onLongClick = ::onRowLongClick,
+        isSelected = ::isRowSelected,
+    )
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument(RoleArchiveCodec.MIME_TYPE)
     ) { uri -> uri?.let(::exportArchive) }
@@ -82,6 +94,15 @@ class RoleLibraryActivity :
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
+        setupSelectionUi()
+        onBackPressedDispatcher.addCallback(this) {
+            if (selectionMode) {
+                exitSelectionMode()
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
         binding.searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -237,8 +258,11 @@ class RoleLibraryActivity :
                     row.bookTitle.lowercase().contains(keyword) ||
                     row.aliases.any { it.lowercase().contains(keyword) }
             }
+        visibleRows = visible
         adapter.submitList(visible)
+        adapter.refreshSelection()
         binding.emptyView.isVisible = visible.isEmpty()
+        if (selectionMode) updateSelectionUi()
     }
 
     private fun showRoleActions(row: RoleLibraryRow) {
@@ -274,6 +298,297 @@ class RoleLibraryActivity :
                 if (isFormal) deleteFormalRole(row) else deleteCastRole(row)
             }
         }
+    }
+
+    private fun setupSelectionUi() {
+        binding.tvSelectAll.setOnClickListener { toggleSelectAll() }
+        binding.tvExitSelection.setOnClickListener { exitSelectionMode() }
+        binding.btnBatchGender.setOnClickListener { showBatchGender() }
+        binding.btnBatchEnabled.setOnClickListener { showBatchEnabled() }
+        binding.btnBatchPromote.setOnClickListener { showBatchPromote() }
+        binding.btnBatchDelete.setOnClickListener { showBatchDelete() }
+        binding.btnBatchVoice.setOnClickListener { showBatchVoice() }
+    }
+
+    private fun onRowClick(row: RoleLibraryRow) {
+        if (selectionMode) toggleSelection(row) else showRoleActions(row)
+    }
+
+    private fun onRowLongClick(row: RoleLibraryRow) {
+        if (!selectionMode) {
+            selectionMode = true
+            binding.selectionBar.isVisible = true
+            binding.bottomActions.isVisible = true
+        }
+        toggleSelection(row)
+    }
+
+    private fun isRowSelected(row: RoleLibraryRow): Boolean =
+        selectionMode && selectionKey(row) in selectedRows
+
+    private fun selectionKey(row: RoleLibraryRow): String =
+        "${row.targetType}|${row.targetId}"
+
+    private fun toggleSelection(row: RoleLibraryRow) {
+        val key = selectionKey(row)
+        if (selectedRows.remove(key) == null) {
+            selectedRows[key] = row
+        }
+        adapter.refreshSelection()
+        updateSelectionUi()
+    }
+
+    private fun updateSelectionUi() {
+        if (!selectionMode) return
+        binding.tvSelectionCount.text = getString(R.string.role_batch_selected, selectedRows.size)
+        val allSelected = visibleRows.isNotEmpty() && visibleRows.all { isRowSelected(it) }
+        binding.tvSelectAll.text = getString(
+            if (allSelected) R.string.role_batch_clear_selection else R.string.role_batch_select_all
+        )
+        val formalCount = RoleBatchPlanner.genderTargets(selectedItems()).size
+        val castCount = RoleBatchPlanner.promoteTargets(selectedItems()).size
+        val hasAny = selectedRows.isNotEmpty()
+        setActionEnabled(binding.btnBatchGender, formalCount > 0)
+        setActionEnabled(binding.btnBatchEnabled, formalCount > 0)
+        setActionEnabled(binding.btnBatchPromote, castCount > 0)
+        setActionEnabled(binding.btnBatchDelete, hasAny)
+        setActionEnabled(binding.btnBatchVoice, hasAny)
+    }
+
+    private fun setActionEnabled(view: android.view.View, enabled: Boolean) {
+        view.isEnabled = enabled
+        view.alpha = if (enabled) 1f else 0.4f
+    }
+
+    private fun toggleSelectAll() {
+        if (visibleRows.isEmpty()) return
+        if (visibleRows.all { isRowSelected(it) }) {
+            visibleRows.forEach { selectedRows.remove(selectionKey(it)) }
+        } else {
+            visibleRows.forEach { selectedRows[selectionKey(it)] = it }
+        }
+        adapter.refreshSelection()
+        updateSelectionUi()
+    }
+
+    private fun exitSelectionMode() {
+        selectionMode = false
+        selectedRows.clear()
+        binding.selectionBar.isVisible = false
+        binding.bottomActions.isVisible = false
+        binding.titleBar.setTitle(R.string.role_library)
+        adapter.refreshSelection()
+    }
+
+    private fun selectedItems(): List<RoleBatchPlanner.Item> =
+        selectedRows.values.map {
+            RoleBatchPlanner.Item(
+                workKey = it.workKey,
+                targetType = it.targetType,
+                targetId = it.targetId,
+                name = it.name,
+                bookTitle = it.bookTitle,
+                gender = it.gender,
+                enabled = true,
+                identityState = it.identityState,
+            )
+        }
+
+    private fun showBatchGender() {
+        val targets = RoleBatchPlanner.genderTargets(selectedItems())
+        if (targets.isEmpty()) {
+            toastOnUi(R.string.role_batch_no_targets)
+            return
+        }
+        val genders = listOf(
+            BookRole.Gender.MALE,
+            BookRole.Gender.FEMALE,
+            BookRole.Gender.UNKNOWN,
+        )
+        val labels = genders.map {
+            getString(
+                when (it) {
+                    BookRole.Gender.MALE -> R.string.ai_role_gender_male
+                    BookRole.Gender.FEMALE -> R.string.ai_role_gender_female
+                    else -> R.string.ai_role_gender_unknown
+                }
+            )
+        }
+        alert(title = getString(R.string.role_batch_gender_title)) {
+            items(labels) { dialog, _, which ->
+                dialog.dismiss()
+                runBatch { RoleBatchApplier.updateGender(targets, genders[which]) }
+            }
+            negativeButton(R.string.cancel)
+        }
+    }
+
+    private fun showBatchEnabled() {
+        val targets = RoleBatchPlanner.enabledTargets(selectedItems())
+        if (targets.isEmpty()) {
+            toastOnUi(R.string.role_batch_no_targets)
+            return
+        }
+        val labels = listOf(
+            getString(R.string.role_batch_enabled),
+            getString(R.string.role_batch_disabled),
+        )
+        alert(title = getString(R.string.role_batch_enable_title)) {
+            items(labels) { dialog, _, which ->
+                dialog.dismiss()
+                runBatch { RoleBatchApplier.updateEnabled(targets, enabled = which == 0) }
+            }
+            negativeButton(R.string.cancel)
+        }
+    }
+
+    private fun showBatchPromote() {
+        val targets = RoleBatchPlanner.promoteTargets(selectedItems())
+        if (targets.isEmpty()) {
+            toastOnUi(R.string.role_batch_no_targets)
+            return
+        }
+        alert(title = getString(R.string.role_batch_promote_title)) {
+            setMessage(getString(R.string.role_batch_affected, targets.size))
+            positiveButton(R.string.role_batch_promote) {
+                runBatch { RoleBatchApplier.promoteCast(targets) }
+            }
+            negativeButton(R.string.cancel)
+        }
+    }
+
+    private fun showBatchDelete() {
+        val targets = RoleBatchPlanner.deleteTargets(selectedItems())
+        if (targets.isEmpty()) return
+        val labels = RoleBatchPlanner.deleteLabels(targets)
+        alert(title = getString(R.string.role_batch_delete_title)) {
+            setMessage(
+                getString(R.string.role_batch_delete_message, targets.size) +
+                    "\n" + labels.joinToString("\n")
+            )
+            positiveButton(R.string.role_batch_delete) {
+                runBatch { RoleBatchApplier.delete(targets) }
+            }
+            negativeButton(R.string.cancel)
+        }
+    }
+
+    private fun showBatchVoice() {
+        val targets = selectedItems()
+        if (targets.isEmpty()) return
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { buildVoiceSources() }) {
+                is RoleBatchPlanner.VoiceSourceResult.Failure -> toastOnUi(result.reason)
+                is RoleBatchPlanner.VoiceSourceResult.Success -> {
+                    alert(title = getString(R.string.role_batch_voice_title)) {
+                        items(result.options.map { it.label }) { dialog, _, which ->
+                            dialog.dismiss()
+                            val option = result.options[which]
+                            alert(title = getString(R.string.role_batch_voice_title)) {
+                                setMessage(
+                                    getString(
+                                        R.string.role_batch_voice_confirm,
+                                        targets.size,
+                                        option.label,
+                                    )
+                                )
+                                positiveButton(R.string.role_batch_voice_apply) {
+                                    applyBatchVoice(option, targets)
+                                }
+                                negativeButton(R.string.cancel)
+                            }
+                        }
+                        negativeButton(R.string.cancel)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyBatchVoice(
+        option: RoleBatchPlanner.VoiceOption,
+        targets: List<RoleBatchPlanner.Item>,
+    ) {
+        val bindingTargets = targets.map {
+            RoleBindingBatchApplier.Target(it.workKey, it.targetType, it.targetId)
+        }
+        lifecycleScope.launch {
+            runCatching {
+                RoleBindingBatchApplier.apply(
+                    bindingTargets,
+                    option.engineId,
+                    option.speakerId,
+                )
+            }.onSuccess { counts ->
+                exitSelectionMode()
+                loadRows()
+                alert(title = getString(R.string.role_batch_done)) {
+                    setMessage(
+                        getString(
+                            R.string.role_batch_voice_applied,
+                            counts.added,
+                            counts.overwritten,
+                            counts.skipped,
+                        )
+                    )
+                    positiveButton(R.string.ok)
+                }
+            }.onFailure {
+                toastOnUi(getString(R.string.role_batch_failed, it.message.orEmpty()))
+            }
+        }
+    }
+
+    private fun runBatch(block: suspend () -> Int) {
+        lifecycleScope.launch {
+            runCatching { block() }.onSuccess { count ->
+                exitSelectionMode()
+                loadRows()
+                alert(title = getString(R.string.role_batch_done)) {
+                    setMessage(getString(R.string.role_batch_affected, count))
+                    positiveButton(R.string.ok)
+                }
+            }.onFailure {
+                toastOnUi(getString(R.string.role_batch_failed, it.message.orEmpty()))
+            }
+        }
+    }
+
+    private fun buildVoiceSources(): RoleBatchPlanner.VoiceSourceResult {
+        val engine = runCatching {
+            TtsEngineStore.engineOrVoiceDirectory(AppConfig.ttsEngine)
+        }.getOrNull()
+        val engineVoices = engine?.effectiveVoices()
+            ?.mapNotNull { voice ->
+                val name = voice.name.takeIf { it.isNotBlank() } ?: voice.id
+                if (voice.id.isBlank()) null
+                else RoleBatchPlanner.VoiceOption(engine.id, voice.id, "${engine.name} · $name")
+            }
+            .orEmpty()
+        val fallback = appDb.bookRoleDao.getAllBindingsGlobal()
+            .asSequence()
+            .filter { it.speakerId.isNotBlank() }
+            .distinctBy { "${it.engineId}|${it.speakerId}" }
+            .map {
+                RoleBatchPlanner.VoiceOption(
+                    engineId = it.engineId,
+                    speakerId = it.speakerId,
+                    label = voiceLabel(it.engineId, it.speakerId),
+                )
+            }
+            .toList()
+        return RoleBatchPlanner.resolveVoiceSources(engineVoices, fallback)
+    }
+
+    private fun voiceLabel(engineId: String, speakerId: String): String {
+        val engine = runCatching {
+            TtsEngineStore.engineOrVoiceDirectory(engineId)
+        }.getOrNull() ?: return speakerId
+        val name = engine.effectiveVoices()
+            .firstOrNull { it.id == speakerId }?.name
+            ?.takeIf { it.isNotBlank() }
+            ?: speakerId
+        return "${engine.name} · $name"
     }
 
     private fun showVoiceSync(row: RoleLibraryRow) {

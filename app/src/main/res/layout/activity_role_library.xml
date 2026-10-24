@@ -14,6 +14,49 @@
         app:contentInsetStartWithNavigation="0dp"
         app:title="@string/role_library" />
 
+    <LinearLayout
+        android:id="@+id/selection_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_selection_count"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/primaryText"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_select_all"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="@string/role_batch_select_all"
+            android:textColor="?attr/colorAccent"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_exit_selection"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:text="@string/role_batch_exit"
+            android:textColor="?attr/colorAccent"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <EditText
         android:id="@+id/search_input"
         android:layout_width="match_parent"
@@ -67,5 +110,84 @@
             android:textSize="15sp"
             android:visibility="gone" />
     </FrameLayout>
+
+    <HorizontalScrollView
+        android:id="@+id/bottom_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/background"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/btn_batch_gender"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/role_batch_gender"
+                android:textColor="?attr/colorAccent"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btn_batch_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/role_batch_enable_disable"
+                android:textColor="?attr/colorAccent"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btn_batch_promote"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/role_batch_promote"
+                android:textColor="?attr/colorAccent"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btn_batch_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/role_batch_delete"
+                android:textColor="@color/error"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/btn_batch_voice"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/role_batch_voice"
+                android:textColor="?attr/colorAccent"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
 
 </LinearLayout>
