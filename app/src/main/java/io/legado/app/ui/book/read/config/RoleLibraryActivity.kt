@@ -19,14 +19,21 @@ import io.legado.app.data.entities.BookRole
 import io.legado.app.data.entities.BookTtsCastRole
 import io.legado.app.data.entities.BookTtsVoiceBinding
 import io.legado.app.databinding.ActivityRoleLibraryBinding
+import io.legado.app.databinding.DialogRoleImportPreviewBinding
 import io.legado.app.databinding.DialogRoleVoiceSyncBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.roles.RoleArchiveCodec
 import io.legado.app.help.roles.RoleArchiveExporter
 import io.legado.app.help.roles.RoleArchiveImporter
+import io.legado.app.help.roles.RoleArchivePlanner
 import io.legado.app.help.roles.RoleBatchApplier
 import io.legado.app.help.roles.RoleBatchPlanner
 import io.legado.app.help.roles.RoleBindingBatchApplier
+import io.legado.app.help.roles.JournalState
+import io.legado.app.help.roles.JournalStatus
+import io.legado.app.help.roles.RoleImportJournalStore
+import io.legado.app.help.roles.RoleImportStrategy
+import io.legado.app.help.roles.RoleImportUndo
 import io.legado.app.help.roles.RoleVoiceSyncApplier
 import io.legado.app.help.roles.RoleVoiceSyncPlanner
 import io.legado.app.help.tts.BookTtsAutomationConfig
@@ -55,6 +62,7 @@ class RoleLibraryActivity :
 
     override val binding by viewBinding(ActivityRoleLibraryBinding::inflate)
 
+    private val journalStore by lazy { RoleImportJournalStore(this) }
     private val selectedRows = linkedMapOf<String, RoleLibraryRow>()
     private var selectionMode = false
     private var visibleRows: List<RoleLibraryRow> = emptyList()
@@ -133,6 +141,11 @@ class RoleLibraryActivity :
                 importLauncher.launch(
                     arrayOf(RoleArchiveCodec.MIME_TYPE, "text/plain", "application/octet-stream")
                 )
+                return true
+            }
+
+            R.id.menu_role_import_undo -> {
+                confirmUndoImport()
                 return true
             }
         }
@@ -1032,14 +1045,90 @@ class RoleLibraryActivity :
                     it.formalRoles.size + it.castRoles.size
                 }
                 if (roleCount == 0) error(getString(R.string.role_library_import_empty))
-                RoleArchiveImporter.import(archive)
+                RoleArchiveImporter.preview(archive)
+            }.onSuccess(::showImportPreview)
+                .onFailure {
+                    toastOnUi(
+                        getString(
+                            R.string.role_library_import_failed,
+                            it.message ?: it.javaClass.simpleName,
+                        )
+                    )
+                }
+        }
+    }
+
+    private fun showImportPreview(preview: RoleArchiveImporter.Preview) {
+        val dialogBinding = DialogRoleImportPreviewBinding.inflate(layoutInflater)
+        dialogBinding.tvSummary.text = getString(
+            R.string.role_import_preview_summary,
+            preview.newRoles,
+            preview.conflicts,
+            preview.bindings,
+            preview.temporaryRoles,
+        )
+        dialogBinding.tvBooks.text = preview.books.joinToString("\n") { book ->
+            getString(
+                R.string.role_import_preview_book,
+                book.bookName.ifBlank { book.workKey },
+                book.newFormal + book.newCast,
+                book.conflictFormal + book.conflictCast,
+                book.bindings,
+                book.temporary,
+            )
+        }
+        val conflictLines = preview.plan.conflicts.map { conflict ->
+            val bookName = preview.books.firstOrNull {
+                it.workKey == conflict.book.workKey
+            }?.bookName?.ifBlank { conflict.book.workKey } ?: conflict.book.workKey
+            getString(
+                R.string.role_import_conflict_line,
+                bookName,
+                conflict.archiveName,
+                conflict.existingName,
+            )
+        }
+        dialogBinding.tvConflicts.text = if (conflictLines.isEmpty()) {
+            ""
+        } else {
+            buildString {
+                append(getString(R.string.role_import_conflicts_title))
+                append('\n')
+                append(conflictLines.take(20).joinToString("\n"))
+                if (conflictLines.size > 20) {
+                    append("\n… (+").append(conflictLines.size - 20).append(')')
+                }
+            }
+        }
+        alert(title = getString(R.string.role_import_preview_title)) {
+            customView { dialogBinding.root }
+            positiveButton(R.string.role_import_confirm) {
+                val strategy = if (dialogBinding.rbOverwrite.isChecked) {
+                    RoleImportStrategy.OVERWRITE
+                } else {
+                    RoleImportStrategy.SKIP
+                }
+                importWithStrategy(preview.plan, strategy)
+            }
+            negativeButton(R.string.cancel)
+        }
+    }
+
+    private fun importWithStrategy(
+        plan: RoleArchivePlanner.Plan,
+        strategy: RoleImportStrategy,
+    ) {
+        lifecycleScope.launch {
+            runCatching {
+                RoleArchiveImporter.import(plan, strategy, journalStore)
             }.onSuccess { result ->
                 loadRows()
                 alert(title = getString(R.string.role_library_import_done)) {
                     setMessage(
                         getString(
-                            R.string.role_library_import_summary,
+                            R.string.role_import_summary,
                             result.newRoles,
+                            result.updatedRoles,
                             result.skipped,
                             result.bindings,
                         )
@@ -1053,6 +1142,58 @@ class RoleLibraryActivity :
                         it.message ?: it.javaClass.simpleName,
                     )
                 )
+            }
+        }
+    }
+
+    private fun confirmUndoImport() {
+        val state = journalStore.state()
+        when (state.status) {
+            JournalStatus.NONE -> toastOnUi(R.string.role_import_undo_none)
+            JournalStatus.INVALID -> alert(
+                title = getString(R.string.role_import_undo_confirm_title)
+            ) {
+                setMessage(getString(R.string.role_import_undo_invalid))
+                positiveButton(R.string.ok)
+            }
+
+            JournalStatus.READY -> alert(
+                title = getString(R.string.role_import_undo_confirm_title)
+            ) {
+                setMessage(getString(R.string.role_import_undo_confirm))
+                positiveButton(R.string.role_import_undo) {
+                    lifecycleScope.launch {
+                        val journal = withContext(Dispatchers.IO) { journalStore.load() }
+                        if (journal == null) {
+                            toastOnUi(R.string.role_import_undo_invalid)
+                            return@launch
+                        }
+                        runCatching {
+                            RoleImportUndo.undo(journal, journalStore)
+                        }.onSuccess { result ->
+                            loadRows()
+                            alert(title = getString(R.string.role_import_undo_done)) {
+                                setMessage(
+                                    getString(
+                                        R.string.role_import_undo_summary,
+                                        result.deletedRoles,
+                                        result.restoredRoles,
+                                        result.restoredBindings,
+                                    )
+                                )
+                                positiveButton(R.string.ok)
+                            }
+                        }.onFailure {
+                            toastOnUi(
+                                getString(
+                                    R.string.role_import_undo_failed,
+                                    it.message ?: it.javaClass.simpleName,
+                                )
+                            )
+                        }
+                    }
+                }
+                negativeButton(R.string.cancel)
             }
         }
     }

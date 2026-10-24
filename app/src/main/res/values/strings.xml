@@ -2863,4 +2863,22 @@
     <string name="role_batch_enabled">Enable</string>
     <string name="role_batch_disabled">Disable</string>
     <string name="role_batch_voice_apply">Apply</string>
+    <string name="role_import_preview_title">Import preview</string>
+    <string name="role_import_preview_summary">New roles %1$d · conflicts %2$d · bindings %3$d · temporary %4$d</string>
+    <string name="role_import_preview_book">《%1$s》  new %2$d · conflicts %3$d · bindings %4$d · temp %5$d</string>
+    <string name="role_import_conflicts_title">Conflicts:</string>
+    <string name="role_import_conflict_line">《%1$s》%2$s  →  existing: %3$s</string>
+    <string name="role_import_strategy_title">Import strategy</string>
+    <string name="role_import_strategy_skip">Skip same-name roles (keep library) — default</string>
+    <string name="role_import_strategy_overwrite">Overwrite same-name roles (archive fields + voice)</string>
+    <string name="role_import_confirm">Import</string>
+    <string name="role_import_summary">Added %1$d / updated %2$d / skipped %3$d / bindings %4$d</string>
+    <string name="role_import_undo">Undo last import</string>
+    <string name="role_import_undo_confirm_title">Undo import</string>
+    <string name="role_import_undo_confirm">Undo the last import? Roles created by it will be deleted; overwritten roles and bindings will be restored.</string>
+    <string name="role_import_undo_done">Undo complete</string>
+    <string name="role_import_undo_summary">Deleted %1$d roles · restored %2$d roles · restored %3$d bindings</string>
+    <string name="role_import_undo_none">No import to undo.</string>
+    <string name="role_import_undo_invalid">The last import journal is corrupt or incompatible; it cannot be undone.</string>
+    <string name="role_import_undo_failed">Undo failed: %1$s</string>
 </resources>

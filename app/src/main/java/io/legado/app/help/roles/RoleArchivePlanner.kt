@@ -14,6 +14,10 @@ object RoleArchivePlanner {
         val targetType: String,
         val name: String,
         val id: Long,
+        val aliasesJson: String = "[]",
+        val gender: String = "unknown",
+        val enabled: Boolean = true,
+        val identityState: String = "stable",
     )
 
     data class PlannedFormal(
@@ -40,13 +44,30 @@ object RoleArchivePlanner {
         val duplicateOfArchiveId: Long = 0L,
     )
 
+    data class Conflict(
+        val book: RoleArchiveBook,
+        val targetType: String,
+        val archiveId: Long,
+        val archiveName: String,
+        val existingId: Long,
+        val existingName: String,
+        val existingAliasesJson: String = "[]",
+        val existingGender: String = "unknown",
+        val existingEnabled: Boolean = true,
+        val existingIdentityState: String = "stable",
+        val incomingFormal: RoleArchiveRole? = null,
+        val incomingCast: RoleArchiveCastRole? = null,
+    )
+
     data class Plan(
         val formal: List<PlannedFormal>,
         val cast: List<PlannedCast>,
         val bindings: List<PlannedBinding>,
         val skipped: List<SkippedRole>,
+        val conflicts: List<Conflict> = emptyList(),
     ) {
         val skippedCount: Int get() = skipped.size
+        val conflictCount: Int get() = conflicts.size
     }
 
     fun plan(
@@ -61,6 +82,7 @@ object RoleArchivePlanner {
         val formal = mutableListOf<PlannedFormal>()
         val cast = mutableListOf<PlannedCast>()
         val skipped = mutableListOf<SkippedRole>()
+        val conflicts = mutableListOf<Conflict>()
 
         archive.books.forEach { book ->
             book.formalRoles.forEach { role ->
@@ -68,13 +90,27 @@ object RoleArchivePlanner {
                 val matched = existing[key]?.firstOrNull()
                 val duplicate = acceptedFormal[key]
                 when {
-                    matched != null -> skipped += SkippedRole(
-                        book.workKey,
-                        RoleArchiveTargetType.CHARACTER,
-                        role.id,
-                        role.name,
-                        existingId = matched.id,
-                    )
+                    matched != null -> {
+                        skipped += SkippedRole(
+                            book.workKey,
+                            RoleArchiveTargetType.CHARACTER,
+                            role.id,
+                            role.name,
+                            existingId = matched.id,
+                        )
+                        conflicts += Conflict(
+                            book = book,
+                            targetType = RoleArchiveTargetType.CHARACTER,
+                            archiveId = role.id,
+                            archiveName = role.name,
+                            existingId = matched.id,
+                            existingName = matched.name,
+                            existingAliasesJson = matched.aliasesJson,
+                            existingGender = matched.gender,
+                            existingEnabled = matched.enabled,
+                            incomingFormal = role,
+                        )
+                    }
 
                     duplicate != null -> skipped += SkippedRole(
                         book.workKey,
@@ -95,13 +131,28 @@ object RoleArchivePlanner {
                 val matched = existing[key]?.firstOrNull()
                 val duplicate = acceptedCast[key]
                 when {
-                    matched != null -> skipped += SkippedRole(
-                        book.workKey,
-                        RoleArchiveTargetType.CAST_ROLE,
-                        role.id,
-                        role.name,
-                        existingId = matched.id,
-                    )
+                    matched != null -> {
+                        skipped += SkippedRole(
+                            book.workKey,
+                            RoleArchiveTargetType.CAST_ROLE,
+                            role.id,
+                            role.name,
+                            existingId = matched.id,
+                        )
+                        conflicts += Conflict(
+                            book = book,
+                            targetType = RoleArchiveTargetType.CAST_ROLE,
+                            archiveId = role.id,
+                            archiveName = role.name,
+                            existingId = matched.id,
+                            existingName = matched.name,
+                            existingAliasesJson = matched.aliasesJson,
+                            existingGender = matched.gender,
+                            existingEnabled = matched.enabled,
+                            existingIdentityState = matched.identityState,
+                            incomingCast = role,
+                        )
+                    }
 
                     duplicate != null -> skipped += SkippedRole(
                         book.workKey,
@@ -121,7 +172,7 @@ object RoleArchivePlanner {
         val bindings = archive.books.flatMap { book ->
             book.bindings.map { PlannedBinding(book, it) }
         }
-        return Plan(formal, cast, bindings, skipped)
+        return Plan(formal, cast, bindings, skipped, conflicts)
     }
 
     fun normalizeName(name: String): String {

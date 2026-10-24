@@ -12,4 +12,9 @@
         android:title="@string/role_library_import"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/menu_role_import_undo"
+        android:title="@string/role_import_undo"
+        app:showAsAction="never" />
+
 </menu>

@@ -2703,4 +2703,22 @@
     <string name="role_batch_enabled">启用</string>
     <string name="role_batch_disabled">停用</string>
     <string name="role_batch_voice_apply">应用</string>
+    <string name="role_import_preview_title">导入预览</string>
+    <string name="role_import_preview_summary">新增角色 %1$d · 冲突 %2$d · 绑定 %3$d · 临时 %4$d</string>
+    <string name="role_import_preview_book">《%1$s》  新增 %2$d · 冲突 %3$d · 绑定 %4$d · 临时 %5$d</string>
+    <string name="role_import_conflicts_title">冲突角色:</string>
+    <string name="role_import_conflict_line">《%1$s》%2$s  →  库内: %3$s</string>
+    <string name="role_import_strategy_title">导入策略</string>
+    <string name="role_import_strategy_skip">跳过同名角色（保留库内版本，默认）</string>
+    <string name="role_import_strategy_overwrite">覆盖同名角色（归档字段 + 音色）</string>
+    <string name="role_import_confirm">导入</string>
+    <string name="role_import_summary">新增 %1$d / 更新 %2$d / 跳过 %3$d / 绑定 %4$d</string>
+    <string name="role_import_undo">撤销上次导入</string>
+    <string name="role_import_undo_confirm_title">撤销导入</string>
+    <string name="role_import_undo_confirm">撤销上次导入？将删除本次新建角色，并恢复被覆盖的角色与音色绑定。</string>
+    <string name="role_import_undo_done">撤销完成</string>
+    <string name="role_import_undo_summary">删除 %1$d 个角色 · 恢复 %2$d 个角色 · 恢复 %3$d 条绑定</string>
+    <string name="role_import_undo_none">没有可撤销的导入。</string>
+    <string name="role_import_undo_invalid">上次导入记录损坏或版本不兼容，无法撤销。</string>
+    <string name="role_import_undo_failed">撤销失败: %1$s</string>
 </resources>
