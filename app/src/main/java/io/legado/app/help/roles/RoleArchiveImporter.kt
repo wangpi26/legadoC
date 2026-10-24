@@ -63,6 +63,13 @@ object RoleArchiveImporter {
                 }
             }
             var newRoles = 0
+            fun resolveDuplicateSkipped(targetType: String, ids: MutableMap<Long, Long>) {
+                plan.skipped.filter {
+                    it.targetType == targetType && it.duplicateOfArchiveId > 0L
+                }.forEach {
+                    ids[it.duplicateOfArchiveId]?.let { mapped -> ids[it.archiveId] = mapped }
+                }
+            }
             plan.formal.forEach { planned ->
                 val role = planned.role
                 val newId = dao.insertRole(
@@ -78,6 +85,7 @@ object RoleArchiveImporter {
                 formalIds[role.id] = newId
                 newRoles++
             }
+            resolveDuplicateSkipped(RoleArchiveTargetType.CHARACTER, formalIds)
             plan.cast.forEach { planned ->
                 val role = planned.role
                 val newId = dao.insertCastRole(
@@ -101,20 +109,8 @@ object RoleArchiveImporter {
                 castIds[role.id] = newId
                 newRoles++
             }
-            // 归档内部同名被跳过的角色：绑定指向同一本书内第一个被接收的角色。
-            plan.skipped.filter { it.duplicateOfArchiveId > 0L }.forEach {
-                val mapped = when (it.targetType) {
-                    RoleArchiveTargetType.CHARACTER -> formalIds[it.duplicateOfArchiveId]
-                    RoleArchiveTargetType.CAST_ROLE -> castIds[it.duplicateOfArchiveId]
-                    else -> null
-                }
-                if (mapped != null) {
-                    when (it.targetType) {
-                        RoleArchiveTargetType.CHARACTER -> formalIds[it.archiveId] = mapped
-                        RoleArchiveTargetType.CAST_ROLE -> castIds[it.archiveId] = mapped
-                    }
-                }
-            }
+            // 归档内部同名被跳过的角色：绑定/linkedRoleId 指向同一本书内第一个被接收的角色。
+            resolveDuplicateSkipped(RoleArchiveTargetType.CAST_ROLE, castIds)
             var bindings = 0
             plan.bindings.forEach { planned ->
                 val binding = planned.binding
