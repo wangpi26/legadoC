@@ -14,6 +14,13 @@ object AppLog {
     private val logFile: File by lazy { File(appCtx.filesDir, "app.log") }
 
     /**
+     * JVM 测试隔离点: 普通 JVM 测试没有 Android/LiveEventBus 初始化环境。
+     * 生产代码保持 null, 事件分发行为不变。
+     */
+    @Volatile
+    internal var eventSink: ((String, Int) -> Unit)? = null
+
+    /**
      * 一条日志：时间、内容、异常和归属模块。
      * 模块在写入时按调用方类名由 LogModule.classify 单点判定。
      */
@@ -65,13 +72,13 @@ object AppLog {
         val entry = Entry(System.currentTimeMillis(), message, throwable, module ?: callerModule())
         mLogs.add(0, entry)
         persist(entry)
-        postEvent(EventBus.APP_LOG_CHANGED, mLogs.size)
+        publish(EventBus.APP_LOG_CHANGED, mLogs.size)
     }
 
     fun putAi(message: String?, throwable: Throwable? = null) {
         message ?: return
         put("$AI_LOG_PREFIX $message", throwable, module = LogModule.AI)
-        postEvent(EventBus.AI_LOGS_CHANGED, aiLogs.size)
+        publish(EventBus.AI_LOGS_CHANGED, aiLogs.size)
     }
 
     private fun callerModule(): LogModule {
@@ -103,7 +110,7 @@ object AppLog {
     fun clear() {
         mLogs.clear()
         logFile.delete()
-        postEvent(EventBus.APP_LOG_CHANGED, 0)
+        publish(EventBus.APP_LOG_CHANGED, 0)
     }
 
     fun clearAi() {
@@ -111,7 +118,7 @@ object AppLog {
             mLogs.removeAll { it.message.startsWith("$AI_LOG_PREFIX ") }
             rewritePersisted()
         }
-        postEvent(EventBus.AI_LOGS_CHANGED, 0)
+        publish(EventBus.AI_LOGS_CHANGED, 0)
     }
 
     fun formatLogs(logs: List<Entry>): String {
@@ -131,6 +138,11 @@ object AppLog {
         module: LogModule? = null,
     ) {
         put(message, throwable, module = module)
+    }
+
+    private fun publish(tag: String, event: Int) {
+        val sink = eventSink
+        if (sink != null) sink(tag, event) else postEvent(tag, event)
     }
 
     private fun persist(log: Entry) {

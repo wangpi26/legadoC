@@ -14,7 +14,8 @@ class ReadBookConfigTest {
         val changed = config.sanitize()
 
         assertTrue(changed)
-        assertEquals(10, config.lineSpacingExtra)
+        // ReadBookConfig.kt:947 的规则是 coerceIn(0, 20); -5 应被钳制到 0.
+        assertEquals(0, config.lineSpacingExtra)
     }
 
     @Test

@@ -1,15 +1,29 @@
 package io.legado.app.help.cache
 
+import io.legado.app.constant.AppLog
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class CacheTaskStoreTest {
+
+    @Before
+    fun isolateAppLogEvents() {
+        // 普通 JVM 测试没有 Android Application, LiveEventBus 无法初始化; 只隔离事件分发.
+        AppLog.eventSink = { _, _ -> }
+    }
+
+    @After
+    fun restoreAppLogEvents() {
+        AppLog.eventSink = null
+    }
 
     @Test
     fun bodyAndReviewTasksAggregateWithinOneSession() {
