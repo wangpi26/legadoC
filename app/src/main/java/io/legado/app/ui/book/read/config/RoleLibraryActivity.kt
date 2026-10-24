@@ -18,9 +18,12 @@ import io.legado.app.data.entities.BookRole
 import io.legado.app.data.entities.BookTtsCastRole
 import io.legado.app.data.entities.BookTtsVoiceBinding
 import io.legado.app.databinding.ActivityRoleLibraryBinding
+import io.legado.app.databinding.DialogRoleVoiceSyncBinding
 import io.legado.app.help.roles.RoleArchiveCodec
 import io.legado.app.help.roles.RoleArchiveExporter
 import io.legado.app.help.roles.RoleArchiveImporter
+import io.legado.app.help.roles.RoleVoiceSyncApplier
+import io.legado.app.help.roles.RoleVoiceSyncPlanner
 import io.legado.app.help.tts.BookTtsAutomationConfig
 import io.legado.app.help.tts.BookTtsCastingCoordinator
 import io.legado.app.help.tts.TtsEngineStore
@@ -58,6 +61,11 @@ class RoleLibraryActivity :
     private var query = ""
     private var allRows: List<RoleLibraryRow> = emptyList()
     private var refreshOnFocus = false
+
+    private data class VoiceSyncData(
+        val plan: RoleVoiceSyncPlanner.Plan,
+        val bookTitles: Map<String, String>,
+    )
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         binding.titleBar.setTitle(R.string.role_library)
@@ -239,6 +247,7 @@ class RoleLibraryActivity :
             mutableListOf(
                 getString(R.string.ai_role_edit),
                 getString(R.string.role_library_merge_to),
+                getString(R.string.role_voice_sync),
             )
         } else {
             mutableListOf(
@@ -255,6 +264,7 @@ class RoleLibraryActivity :
                         AiRoleEditDialog.show(supportFragmentManager, row.targetId)
                     }
                     isFormal && which == 1 -> showMergeTargets(row)
+                    isFormal && which == 2 -> showVoiceSync(row)
                     !isFormal && which == 0 -> promoteCastRole(row)
                     !isFormal && which == 1 -> showMergeTargets(row)
                 }
@@ -264,6 +274,108 @@ class RoleLibraryActivity :
                 if (isFormal) deleteFormalRole(row) else deleteCastRole(row)
             }
         }
+    }
+
+    private fun showVoiceSync(row: RoleLibraryRow) {
+        if (row.targetType != BookTtsVoiceBinding.TargetType.CHARACTER) return
+        lifecycleScope.launch {
+            val data = withContext(Dispatchers.IO) { loadVoiceSyncData(row) }
+            val binding = data.plan.sourceBinding
+            if (binding == null || binding.speakerId.isBlank()) {
+                toastOnUi(R.string.role_voice_sync_no_source)
+                return@launch
+            }
+            if (data.plan.candidates.isEmpty()) {
+                toastOnUi(R.string.role_voice_sync_no_targets)
+                return@launch
+            }
+            val dialogBinding = DialogRoleVoiceSyncBinding.inflate(layoutInflater)
+            dialogBinding.tvDesc.text = getString(R.string.role_voice_sync_desc, row.name)
+            dialogBinding.tvTargets.text = buildString {
+                data.plan.candidates.forEach { candidate ->
+                    val title = data.bookTitles[candidate.workKey]
+                        ?: getString(R.string.role_library_unknown_book)
+                    append("《").append(title).append("》")
+                    append(candidate.name)
+                    append("  ")
+                    append(
+                        getString(
+                            if (candidate.hasExistingBinding) {
+                                R.string.role_voice_sync_has_binding
+                            } else {
+                                R.string.role_voice_sync_new_binding
+                            }
+                        )
+                    )
+                    append('\n')
+                }
+            }
+            alert(title = getString(R.string.role_voice_sync_title)) {
+                customView { dialogBinding.root }
+                positiveButton(R.string.role_voice_sync_apply) {
+                    val overwrite = dialogBinding.rbOverwrite.isChecked
+                    lifecycleScope.launch {
+                        when (val outcome = RoleVoiceSyncApplier.apply(data.plan, overwrite)) {
+                            is RoleVoiceSyncApplier.Outcome.Success -> {
+                                loadRows()
+                                alert(title = getString(R.string.role_voice_sync_done)) {
+                                    setMessage(
+                                        getString(
+                                            R.string.role_voice_sync_summary,
+                                            outcome.counts.added,
+                                            outcome.counts.overwritten,
+                                            outcome.counts.skipped,
+                                        )
+                                    )
+                                    positiveButton(R.string.ok)
+                                }
+                            }
+
+                            is RoleVoiceSyncApplier.Outcome.Failure ->
+                                toastOnUi(outcome.reason)
+                        }
+                    }
+                }
+                negativeButton(R.string.cancel)
+            }
+        }
+    }
+
+    private fun loadVoiceSyncData(row: RoleLibraryRow): VoiceSyncData {
+        val dao = appDb.bookRoleDao
+        val books = appDb.bookDao.all.associateBy {
+            BookTtsAutomationConfig.workKeyOf(it.name, it.author)
+        }
+        val source = RoleVoiceSyncPlanner.Source(
+            workKey = row.workKey,
+            targetType = row.targetType,
+            roleId = row.targetId,
+            name = row.name,
+            aliases = row.aliases,
+        )
+        val formal = dao.getAllBookRolesGlobal().map {
+            RoleVoiceSyncPlanner.FormalRole(
+                workKey = it.workKey,
+                targetType = BookTtsVoiceBinding.TargetType.CHARACTER,
+                roleId = it.roleId,
+                name = it.name,
+                aliases = parseAliases(it.aliasesJson),
+            )
+        }
+        val bindings = dao.getAllBindingsGlobal().map {
+            RoleVoiceSyncPlanner.Binding(
+                workKey = it.workKey,
+                targetType = it.targetType,
+                targetId = it.targetId,
+                engineId = it.engineId,
+                speakerId = it.speakerId,
+                bindingMode = it.bindingMode,
+            )
+        }
+        return VoiceSyncData(
+            plan = RoleVoiceSyncPlanner.plan(source, formal, bindings),
+            bookTitles = books.mapValues { it.value.name },
+        )
     }
 
     private fun showMergeTargets(source: RoleLibraryRow) {

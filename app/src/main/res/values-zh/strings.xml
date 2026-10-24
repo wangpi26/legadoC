@@ -2664,4 +2664,17 @@
     <string name="role_library_import_summary">新增 %1$d / 跳过 %2$d / 绑定 %3$d</string>
     <string name="role_library_import_failed">导入失败: %1$s</string>
     <string name="role_library_import_empty">归档中没有角色</string>
+    <string name="role_voice_sync">跨书同步音色</string>
+    <string name="role_voice_sync_title">同步音色</string>
+    <string name="role_voice_sync_desc">将源角色「%1$s」的音色同步到以下其他书的同名/别名正式角色。</string>
+    <string name="role_voice_sync_skip">跳过已有绑定（默认）</string>
+    <string name="role_voice_sync_overwrite">覆盖已有绑定</string>
+    <string name="role_voice_sync_apply">同步</string>
+    <string name="role_voice_sync_done">同步完成</string>
+    <string name="role_voice_sync_summary">新增 %1$d / 覆盖 %2$d / 跳过 %3$d</string>
+    <string name="role_voice_sync_no_source">源角色没有可同步的音色绑定。</string>
+    <string name="role_voice_sync_no_targets">没有找到其他书中的同名/别名正式角色。</string>
+    <string name="role_voice_sync_has_binding">已有绑定</string>
+    <string name="role_voice_sync_new_binding">新增</string>
+    <string name="role_voice_sync_failed">同步失败: %1$s</string>
 </resources>

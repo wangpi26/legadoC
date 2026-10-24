@@ -2824,4 +2824,17 @@
     <string name="role_library_import_summary">Added %1$d / skipped %2$d / bindings %3$d</string>
     <string name="role_library_import_failed">Import failed: %1$s</string>
     <string name="role_library_import_empty">No roles in this archive</string>
+    <string name="role_voice_sync">Sync voice across books</string>
+    <string name="role_voice_sync_title">Sync voice</string>
+    <string name="role_voice_sync_desc">Copy the voice of “%1$s” to matching formal roles in other books.</string>
+    <string name="role_voice_sync_skip">Skip existing bindings (default)</string>
+    <string name="role_voice_sync_overwrite">Overwrite existing bindings</string>
+    <string name="role_voice_sync_apply">Sync</string>
+    <string name="role_voice_sync_done">Sync complete</string>
+    <string name="role_voice_sync_summary">Added %1$d / overwritten %2$d / skipped %3$d</string>
+    <string name="role_voice_sync_no_source">The source role has no voice binding to sync.</string>
+    <string name="role_voice_sync_no_targets">No matching formal roles were found in other books.</string>
+    <string name="role_voice_sync_has_binding">existing binding</string>
+    <string name="role_voice_sync_new_binding">new</string>
+    <string name="role_voice_sync_failed">Sync failed: %1$s</string>
 </resources>
