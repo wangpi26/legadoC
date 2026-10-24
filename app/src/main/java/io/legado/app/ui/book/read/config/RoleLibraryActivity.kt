@@ -34,6 +34,7 @@ import io.legado.app.help.roles.JournalStatus
 import io.legado.app.help.roles.RoleImportJournalStore
 import io.legado.app.help.roles.RoleImportStrategy
 import io.legado.app.help.roles.RoleImportUndo
+import io.legado.app.help.roles.RoleVoiceGapPlanner
 import io.legado.app.help.roles.RoleVoiceSyncApplier
 import io.legado.app.help.roles.RoleVoiceSyncPlanner
 import io.legado.app.help.tts.BookTtsAutomationConfig
@@ -71,6 +72,7 @@ class RoleLibraryActivity :
         onLongClick = ::onRowLongClick,
         isSelected = ::isRowSelected,
     )
+    private val gapAdapter = RoleVoiceGapAdapter(onClick = ::onVoiceGapClick)
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument(RoleArchiveCodec.MIME_TYPE)
     ) { uri -> uri?.let(::exportArchive) }
@@ -80,6 +82,7 @@ class RoleLibraryActivity :
     private var tabPosition = 0
     private var query = ""
     private var allRows: List<RoleLibraryRow> = emptyList()
+    private var allGapRows: List<RoleVoiceGapRow> = emptyList()
     private var refreshOnFocus = false
 
     private data class VoiceSyncData(
@@ -93,9 +96,11 @@ class RoleLibraryActivity :
         binding.recyclerView.adapter = adapter
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.ai_roles_formal))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.ai_roles_temporary))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.role_voice_gap_tab))
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 tabPosition = tab.position
+                if (tabPosition == 2 && selectionMode) exitSelectionMode()
                 applyFilter()
             }
 
@@ -154,7 +159,7 @@ class RoleLibraryActivity :
 
     override fun onResume() {
         super.onResume()
-        if (allRows.isNotEmpty()) loadRows()
+        if (allRows.isNotEmpty() || allGapRows.isNotEmpty()) loadRows()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -255,10 +260,19 @@ class RoleLibraryActivity :
             }
             allRows = rows
             applyFilter()
+            loadGapRows()
         }
     }
 
     private fun applyFilter() {
+        if (tabPosition == 2) {
+            binding.recyclerView.adapter = gapAdapter
+            binding.emptyView.text = getString(R.string.role_voice_gap_empty)
+            applyGapFilter()
+            return
+        }
+        binding.recyclerView.adapter = adapter
+        binding.emptyView.text = getString(R.string.role_library_empty)
         val keyword = query.trim().lowercase()
         val visible = allRows
             .filter { row ->
@@ -276,6 +290,130 @@ class RoleLibraryActivity :
         adapter.refreshSelection()
         binding.emptyView.isVisible = visible.isEmpty()
         if (selectionMode) updateSelectionUi()
+    }
+
+    private fun loadGapRows() {
+        lifecycleScope.launch {
+            val gaps = withContext(Dispatchers.IO) {
+                val dao = appDb.bookRoleDao
+                val books = appDb.bookDao.all.associateBy {
+                    BookTtsAutomationConfig.workKeyOf(it.name, it.author)
+                }
+                val roles = dao.getAllBookRolesGlobal().map {
+                    RoleVoiceGapPlanner.FormalRole(
+                        workKey = it.workKey,
+                        roleId = it.roleId,
+                        name = it.name,
+                        enabled = it.enabled,
+                    )
+                }
+                val bindings = dao.getAllBindingsGlobal().map {
+                    RoleVoiceGapPlanner.Binding(
+                        workKey = it.workKey,
+                        targetType = it.targetType,
+                        targetId = it.targetId,
+                        speakerId = it.speakerId,
+                    )
+                }
+                RoleVoiceGapPlanner.plan(
+                    roles = roles,
+                    bindings = bindings,
+                    bookTitles = books.mapValues { it.value.name },
+                )
+            }
+            allGapRows = gaps.map { gap ->
+                val names = gap.unboundRoles.take(3).joinToString(" / ") { it.name }
+                val suffix = if (gap.unboundRoles.size > 3) "…" else ""
+                RoleVoiceGapRow(
+                    workKey = gap.workKey,
+                    bookTitle = gap.bookTitle,
+                    progress = getString(
+                        R.string.role_voice_gap_progress,
+                        gap.boundCount,
+                        gap.totalFormal,
+                    ),
+                    roles = getString(R.string.role_voice_gap_roles, names + suffix),
+                    unboundRoles = gap.unboundRoles,
+                )
+            }
+            if (tabPosition == 2) applyGapFilter()
+        }
+    }
+
+    private fun applyGapFilter() {
+        val keyword = query.trim().lowercase()
+        val visible = allGapRows.filter { row ->
+            keyword.isBlank() ||
+                row.bookTitle.lowercase().contains(keyword) ||
+                row.unboundRoles.any { it.name.lowercase().contains(keyword) }
+        }
+        gapAdapter.submitList(visible)
+        binding.emptyView.isVisible = visible.isEmpty()
+    }
+
+    private fun onVoiceGapClick(row: RoleVoiceGapRow) {
+        if (selectionMode) return
+        lifecycleScope.launch {
+            when (val result = withContext(Dispatchers.IO) { buildVoiceSources() }) {
+                is RoleBatchPlanner.VoiceSourceResult.Failure -> toastOnUi(result.reason)
+                is RoleBatchPlanner.VoiceSourceResult.Success -> {
+                    alert(title = getString(R.string.role_batch_voice_title)) {
+                        items(result.options.map { it.label }) { dialog, _, which ->
+                            dialog.dismiss()
+                            val option = result.options[which]
+                            alert(title = getString(R.string.role_batch_voice_title)) {
+                                setMessage(
+                                    getString(
+                                        R.string.role_voice_gap_confirm,
+                                        row.unboundRoles.size,
+                                        option.label,
+                                        row.bookTitle,
+                                    )
+                                )
+                                positiveButton(R.string.role_batch_voice_apply) {
+                                    applyVoiceGap(row, option)
+                                }
+                                negativeButton(R.string.cancel)
+                            }
+                        }
+                        negativeButton(R.string.cancel)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun applyVoiceGap(
+        row: RoleVoiceGapRow,
+        option: RoleBatchPlanner.VoiceOption,
+    ) {
+        val targets = row.unboundRoles.map {
+            RoleBindingBatchApplier.Target(
+                workKey = row.workKey,
+                targetType = BookTtsVoiceBinding.TargetType.CHARACTER,
+                targetId = it.roleId,
+            )
+        }
+        lifecycleScope.launch {
+            runCatching {
+                RoleBindingBatchApplier.apply(targets, option.engineId, option.speakerId)
+            }.onSuccess { counts ->
+                loadRows()
+                alert(title = getString(R.string.role_batch_done)) {
+                    setMessage(
+                        getString(
+                            R.string.role_batch_voice_applied,
+                            counts.added,
+                            counts.overwritten,
+                            counts.skipped,
+                        )
+                    )
+                    positiveButton(R.string.ok)
+                }
+            }.onFailure {
+                toastOnUi(getString(R.string.role_batch_failed, it.message.orEmpty()))
+            }
+        }
     }
 
     private fun showRoleActions(row: RoleLibraryRow) {

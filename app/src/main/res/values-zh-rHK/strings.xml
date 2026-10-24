@@ -1378,4 +1378,10 @@
     <string name="disable_all_toast">關閉所有底部彈窗</string>
     <string name="disable_all_toast_summary">不顯示應用程式透過 Toast 發出的所有底部彈窗，包括書源彈窗</string>
     <string name="reverse_toc_display">&#x53CD;&#x5411;&#x986F;&#x793A;</string>
+    <string name="role_voice_gap_tab">待配音</string>
+    <string name="role_voice_gap_book">《%1$s》</string>
+    <string name="role_voice_gap_progress">已配音 %1$d/%2$d</string>
+    <string name="role_voice_gap_roles">待配音：%1$s</string>
+    <string name="role_voice_gap_empty">沒有待配音的書</string>
+    <string name="role_voice_gap_confirm">為《%3$s》的 %1$d 個待配音角色套用「%2$s」？</string>
 </resources>
