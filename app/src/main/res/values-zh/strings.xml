@@ -2696,7 +2696,7 @@
     <string name="role_batch_voice_title">选择音色</string>
     <string name="role_batch_voice_engine">当前引擎目录</string>
     <string name="role_batch_voice_fallback">库中已有绑定</string>
-    <string name="role_batch_voice_confirm">将对 %1$d 个角色应用「%2$s」，继续？</string>
+    <string name="role_batch_voice_confirm">将「%2$s」应用到 %1$d 个角色，继续？</string>
     <string name="role_batch_voice_applied">新增 %1$d / 覆盖 %2$d / 跳过 %3$d</string>
     <string name="role_batch_no_targets">选中的角色不支持该操作。</string>
     <string name="role_batch_failed">操作失败: %1$s</string>
@@ -2726,5 +2726,5 @@
     <string name="role_voice_gap_progress">已配音 %1$d/%2$d</string>
     <string name="role_voice_gap_roles">待配音: %1$s</string>
     <string name="role_voice_gap_empty">没有待配音的书</string>
-    <string name="role_voice_gap_confirm">为《%3$s》的 %1$d 个待配音角色应用「%2$s」？</string>
+    <string name="role_voice_gap_confirm">将「%2$s」应用到 %1$d 个待配音角色（《%3$s》）？</string>
 </resources>
